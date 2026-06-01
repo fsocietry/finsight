@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Wallet, ArrowLeftRight, ArrowUpRight, ArrowDo
 import { formatCurrency } from "@/lib/utils";
 import ExpenseChart from "@/components/charts/ExpenseChart";
 import CategoryPieChart from "@/components/charts/CategoryPieChart";
+import PeriodFilter, { Period, PERIOD_LABEL } from "@/components/ui/PeriodFilter";
 import Link from "next/link";
 
 interface Transaction {
@@ -20,15 +21,21 @@ const CHART_COLORS = ["#0a84ff", "#ff375f", "#ff9f0a", "#30d158", "#64d2ff", "#b
 export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<Period>("month");
 
   useEffect(() => {
-    fetch("/api/transactions")
+    let active = true;
+    fetch(`/api/transactions?period=${period}`)
       .then((r) => r.json())
       .then((data) => {
+        if (!active) return;
         setTransactions(Array.isArray(data) ? data : []);
         setLoading(false);
       });
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [period]);
 
   const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const totalExpense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
@@ -46,8 +53,9 @@ export default function DashboardPage() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 6);
 
+  const periodName = period === "month" ? "Bulan Ini" : period === "year" ? "Tahun Ini" : "Semua";
   const barData = [
-    { name: "Bulan Ini", pemasukan: totalIncome, pengeluaran: totalExpense },
+    { name: periodName, pemasukan: totalIncome, pengeluaran: totalExpense },
   ];
 
   const stats = [
@@ -67,9 +75,12 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Dashboard</h1>
-        <p className="mt-1 text-ink/50">Ringkasan keuangan bulan ini</p>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Dashboard</h1>
+          <p className="mt-1 text-ink/50">Ringkasan keuangan {PERIOD_LABEL[period]}</p>
+        </div>
+        <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -107,7 +118,7 @@ export default function DashboardPage() {
         {transactions.length === 0 ? (
           <div className="p-12 text-center text-ink/40">
             <ArrowLeftRight className="mx-auto mb-3 opacity-30" size={40} />
-            <p>Belum ada transaksi bulan ini</p>
+            <p>Belum ada transaksi {PERIOD_LABEL[period]}</p>
             <Link href="/transactions" className="btn btn-primary mt-4">
               Tambah transaksi pertama
             </Link>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
 import CategoryPieChart from "@/components/charts/CategoryPieChart";
 import ExpenseChart from "@/components/charts/ExpenseChart";
+import PeriodFilter, { Period, PERIOD_LABEL } from "@/components/ui/PeriodFilter";
 
 interface Transaction {
   id: string;
@@ -18,15 +19,21 @@ const COLORS = ["#0a84ff", "#ff375f", "#ff9f0a", "#30d158", "#64d2ff", "#bf5af2"
 export default function AnalyticsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<Period>("month");
 
   useEffect(() => {
-    fetch("/api/transactions")
+    let active = true;
+    fetch(`/api/transactions?period=${period}`)
       .then((r) => r.json())
       .then((data) => {
+        if (!active) return;
         setTransactions(Array.isArray(data) ? data : []);
         setLoading(false);
       });
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [period]);
 
   const expenses = transactions.filter((t) => t.type === "expense");
   const incomes = transactions.filter((t) => t.type === "income");
@@ -50,9 +57,26 @@ export default function AnalyticsPage() {
     .sort((a, b) => b.total - a.total)
     .map((c, i) => ({ ...c, color: COLORS[i % COLORS.length] }));
   const pieData = categoryStats.slice(0, 7).map((c) => ({ name: c.name, value: c.total, color: c.color }));
-  const barData = [{ name: "Bulan Ini", pemasukan: totalIncome, pengeluaran: totalExpense }];
+
+  const now = new Date();
+  const periodName = period === "month" ? "Bulan Ini" : period === "year" ? "Tahun Ini" : "Semua";
+  const barData = [{ name: periodName, pemasukan: totalIncome, pengeluaran: totalExpense }];
 
   const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0;
+
+  // Jumlah hari untuk rata-rata harian, disesuaikan dengan periode terpilih.
+  let dayCount: number;
+  if (period === "month") {
+    dayCount = now.getDate();
+  } else if (period === "year") {
+    dayCount = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
+  } else if (transactions.length > 0) {
+    const earliest = Math.min(...transactions.map((t) => new Date(t.date).getTime()));
+    dayCount = Math.floor((now.getTime() - earliest) / 86400000) + 1;
+  } else {
+    dayCount = 1;
+  }
+  const avgPerDay = totalExpense / Math.max(1, dayCount);
 
   if (loading) {
     return (
@@ -64,9 +88,12 @@ export default function AnalyticsPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Analitik</h1>
-        <p className="mt-1 text-ink/50">Analisis mendalam keuangan bulan ini</p>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Analitik</h1>
+          <p className="mt-1 text-ink/50">Analisis mendalam keuangan {PERIOD_LABEL[period]}</p>
+        </div>
+        <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -80,14 +107,14 @@ export default function AnalyticsPage() {
         <div className="glass rounded-3xl p-5 text-center">
           <p className="mb-1 text-xs uppercase tracking-wide text-ink/45">Rata-rata Pengeluaran/Hari</p>
           <p className="text-3xl font-semibold text-ink">
-            {formatCurrency(totalExpense / new Date().getDate())}
+            {formatCurrency(avgPerDay)}
           </p>
           <p className="mt-1 text-xs text-ink/40">per hari</p>
         </div>
         <div className="glass rounded-3xl p-5 text-center">
           <p className="mb-1 text-xs uppercase tracking-wide text-ink/45">Total Transaksi</p>
           <p className="text-3xl font-semibold text-ink">{transactions.length}</p>
-          <p className="mt-1 text-xs text-ink/40">bulan ini</p>
+          <p className="mt-1 text-xs text-ink/40">{PERIOD_LABEL[period]}</p>
         </div>
       </div>
 
