@@ -58,7 +58,7 @@ export default function TransactionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/transactions")
+    fetch("/api/transactions?all=1")
       .then((r) => r.json())
       .then((txs) => {
         setTransactions(Array.isArray(txs) ? txs : []);

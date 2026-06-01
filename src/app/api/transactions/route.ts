@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
+  const all = searchParams.get("all");
   const month = searchParams.get("month");
   const year = searchParams.get("year");
 
@@ -20,11 +21,14 @@ export async function GET(req: NextRequest) {
   const start = new Date(targetYear, targetMonth, 1);
   const end = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59);
 
+  // `?all=1` returns every transaction (used by the Transaksi page); otherwise
+  // results are scoped to a single month (dashboard / analytics).
+  const where = all
+    ? { userId: session.user.id }
+    : { userId: session.user.id, date: { gte: start, lte: end } };
+
   const transactions = await prisma.transaction.findMany({
-    where: {
-      userId: session.user.id,
-      date: { gte: start, lte: end },
-    },
+    where,
     orderBy: { date: "desc" },
   });
 
