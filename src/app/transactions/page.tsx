@@ -156,7 +156,7 @@ export default function TransactionsPage() {
               setForm(emptyForm());
               setShowForm(!showForm);
             }}
-            className="btn btn-primary"
+            className="btn btn-glass"
           >
             <Plus size={18} />
             Tambah
@@ -255,7 +255,7 @@ export default function TransactionsPage() {
               <button type="button" onClick={resetForm} className="btn btn-ghost">
                 Batal
               </button>
-              <button type="submit" disabled={submitting} className="btn btn-primary">
+              <button type="submit" disabled={submitting} className="btn btn-glass">
                 {submitting ? "Menyimpan..." : "Simpan"}
               </button>
             </div>

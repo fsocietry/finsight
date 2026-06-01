@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 
 /**
- * FinSight brand mark — a single glossy "F" inside a rounded gradient tile.
+ * FinSight brand mark — a single "F" inside a rounded glass tile that follows
+ * the active theme (no fixed colour accent).
  */
 export default function Logo({
   size = 40,
@@ -13,7 +14,7 @@ export default function Logo({
   return (
     <div
       className={cn(
-        "relative flex flex-shrink-0 items-center justify-center rounded-[28%] bg-gradient-to-br from-[#0a84ff] to-[#bf5af2] shadow-[0_6px_18px_rgba(10,132,255,0.5),inset_0_1px_0_rgba(255,255,255,0.45)]",
+        "relative flex flex-shrink-0 items-center justify-center rounded-[28%] border border-[color:var(--btn-glass-border)] bg-[var(--btn-glass-bg)] text-ink shadow-[inset_0_1px_0_var(--btn-glass-highlight)] backdrop-blur-xl",
         className
       )}
       style={{ width: size, height: size }}
@@ -27,7 +28,7 @@ export default function Logo({
       >
         <path
           d="M8 5.5h9M8 5.5v13M8 11.8h7"
-          stroke="#fff"
+          stroke="currentColor"
           strokeWidth="2.6"
           strokeLinecap="round"
           strokeLinejoin="round"

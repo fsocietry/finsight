@@ -24,17 +24,18 @@ export default function PeriodFilter({
   onChange: (p: Period) => void;
 }) {
   return (
-    <div className="inline-flex rounded-full border border-ink/12 bg-ink/5 p-1 backdrop-blur-xl">
+    <div className="inline-flex rounded-full bg-ink/5 p-1 backdrop-blur-xl">
       {OPTIONS.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
           className={cn(
-            "rounded-full px-3.5 py-1.5 text-xs font-medium transition-all",
+            "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all",
+            // Active segment matches the "Lihat semua" glass button.
             value === o.value
-              ? "bg-[#0a84ff] text-white shadow-[0_4px_12px_rgba(10,132,255,0.4)]"
-              : "text-ink/60 hover:text-ink"
+              ? "border-[color:var(--btn-glass-border)] bg-[var(--btn-glass-bg)] text-ink shadow-[inset_0_1px_0_var(--btn-glass-highlight)]"
+              : "border-transparent text-ink/55 hover:text-ink"
           )}
         >
           {o.label}

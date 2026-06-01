@@ -61,8 +61,8 @@ export default function ChatPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-4">
       <div className="glass mb-3 flex items-center gap-3 rounded-3xl px-5 py-4 sm:px-6 sm:py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0a84ff] to-[#bf5af2]">
-          <Sparkles className="text-white" size={20} />
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[color:var(--btn-glass-border)] bg-[var(--btn-glass-bg)] shadow-[inset_0_1px_0_var(--btn-glass-highlight)] backdrop-blur-xl">
+          <Sparkles className="text-ink" size={20} />
         </div>
         <div>
           <h1 className="text-lg font-semibold text-ink">FinSight AI</h1>
@@ -73,8 +73,8 @@ export default function ChatPage() {
       <div className="flex-1 space-y-4 overflow-y-auto px-2 py-4">
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-[#0a84ff] to-[#bf5af2] shadow-[0_10px_30px_rgba(10,132,255,0.4)]">
-              <Bot className="text-white" size={32} />
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-[color:var(--btn-glass-border)] bg-[var(--btn-glass-bg)] shadow-[inset_0_1px_0_var(--btn-glass-highlight)] backdrop-blur-xl">
+              <Bot className="text-ink" size={32} />
             </div>
             <h2 className="mb-2 text-xl font-semibold text-ink">Halo, saya FinSight AI</h2>
             <p className="mb-6 max-w-sm text-sm text-ink/50">
@@ -96,18 +96,16 @@ export default function ChatPage() {
 
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-            <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl ${msg.role === "user" ? "bg-ink/10" : "bg-gradient-to-br from-[#0a84ff] to-[#bf5af2]"}`}>
+            <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl ${msg.role === "user" ? "bg-ink/10" : "border border-[color:var(--btn-glass-border)] bg-[var(--btn-glass-bg)] shadow-[inset_0_1px_0_var(--btn-glass-highlight)] backdrop-blur-xl"}`}>
               {msg.role === "user" ? (
                 <User size={16} className="text-ink/80" />
               ) : (
-                <Bot size={16} className="text-white" />
+                <Bot size={16} className="text-ink" />
               )}
             </div>
             <div
-              className={`max-w-[85%] whitespace-pre-wrap rounded-3xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] ${
-                msg.role === "user"
-                  ? "bg-[#0a84ff] text-white shadow-[0_6px_20px_rgba(10,132,255,0.4)]"
-                  : "glass text-ink/90"
+              className={`max-w-[85%] whitespace-pre-wrap rounded-3xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] glass ${
+                msg.role === "user" ? "text-ink" : "text-ink/90"
               }`}
             >
               {msg.content}
@@ -117,8 +115,8 @@ export default function ChatPage() {
 
         {loading && (
           <div className="flex gap-3">
-            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0a84ff] to-[#bf5af2]">
-              <Bot size={16} className="text-white" />
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl border border-[color:var(--btn-glass-border)] bg-[var(--btn-glass-bg)] shadow-[inset_0_1px_0_var(--btn-glass-highlight)] backdrop-blur-xl">
+              <Bot size={16} className="text-ink" />
             </div>
             <div className="glass rounded-3xl px-4 py-3">
               <div className="flex h-5 items-center gap-1">
@@ -149,7 +147,7 @@ export default function ChatPage() {
         <button
           type="submit"
           disabled={!input.trim() || loading}
-          className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0a84ff] text-white shadow-[0_6px_20px_rgba(10,132,255,0.4)] transition-transform hover:bg-[#3a9bff] active:scale-95 disabled:opacity-40"
+          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[color:var(--btn-glass-border)] bg-[var(--btn-glass-bg)] text-ink shadow-[inset_0_1px_0_var(--btn-glass-highlight)] backdrop-blur-xl transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
         >
           <Send size={18} />
         </button>

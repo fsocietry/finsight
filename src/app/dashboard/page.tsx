@@ -119,7 +119,7 @@ export default function DashboardPage() {
           <div className="p-12 text-center text-ink/40">
             <ArrowLeftRight className="mx-auto mb-3 opacity-30" size={40} />
             <p>Belum ada transaksi {PERIOD_LABEL[period]}</p>
-            <Link href="/transactions" className="btn btn-primary mt-4">
+            <Link href="/transactions" className="btn btn-glass mt-4">
               Tambah transaksi pertama
             </Link>
           </div>
