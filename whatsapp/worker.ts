@@ -20,7 +20,7 @@ import { parseTransactionText } from "../src/lib/transaction-nlu";
 // ── Konfigurasi & util ──────────────────────────────────────────────────────
 // Tiap user FinSight punya satu sesi WhatsApp sendiri di whatsapp/users/<userId>/.
 const ROOT = process.env.WA_USERS_DIR || "whatsapp/users";
-const logger = pino({ level: "silent" });
+const logger = pino({ level: process.env.WA_LOG_LEVEL || "silent" });
 const TICK_MS = 2500;
 // Jendela waktu sebuah permintaan "connect" tetap aktif (regen QR) sebelum scan.
 const CONNECT_WINDOW_MS = 3 * 60 * 1000;
@@ -77,12 +77,19 @@ const starting = new Set<string>();
 const pendingConnect = new Map<string, number>(); // userId → expiresAt (ms)
 
 // ── Penanganan pesan masuk ──────────────────────────────────────────────────
-function ownIdsOf(sock: WASocket): Set<string> {
+function ownIdsOf(userId: string, sock: WASocket): Set<string> {
   const ids = new Set<string>();
   const id = sock.user?.id || "";
   const lid = (sock.user as { lid?: string })?.lid || "";
   if (id) ids.add(jidDigits(id));
   if (lid) ids.add(jidDigits(lid));
+  // sock.user.lid sering kosong walau creds.me.lid terisi — ambil dari creds
+  // agar chat "Pesan ke Diri Sendiri" yang datang via JID @lid tetap dikenali.
+  try {
+    const c = JSON.parse(readFileSync(path.join(authDir(userId), "creds.json"), "utf8"));
+    if (c?.me?.id) ids.add(jidDigits(c.me.id));
+    if (c?.me?.lid) ids.add(jidDigits(c.me.lid));
+  } catch {}
   return ids;
 }
 
@@ -100,7 +107,7 @@ async function handleMessage(userId: string, session: Session, msg: WAMessage) {
   const id = msg.key.id || "";
   if (id && botSentIds.has(id)) return; // anti-loop balasan sendiri
 
-  if (!isSelfChat(msg, ownIdsOf(sock))) return;
+  if (!isSelfChat(msg, ownIdsOf(userId, sock))) return;
 
   const jid = msg.key.remoteJid!;
   const m = msg.message;
