@@ -9,15 +9,7 @@ import makeWASocket, {
   type WAMessage,
 } from "baileys";
 import QRCode from "qrcode";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  unlinkSync,
-  writeFileSync,
-} from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "fs";
 import path from "path";
 import pino from "pino";
 import { prisma } from "../src/lib/prisma";
@@ -41,17 +33,19 @@ const CANCEL_WORDS = new Set(["batal", "hapus", "undo", "cancel", "batalkan"]);
 
 const userDir = (userId: string) => path.join(ROOT, userId);
 const authDir = (userId: string) => path.join(userDir(userId), "auth");
-const statusFile = (userId: string) => path.join(userDir(userId), "status.json");
 
-function writeStatus(
-  userId: string,
-  s: { connection: "starting" | "qr" | "open" | "close" | "offline"; qr: string | null; code?: number }
-) {
+type WAStatus = "starting" | "qr" | "open" | "close" | "offline";
+
+// Status & QR ditulis ke DB agar web (termasuk di Vercel) bisa membacanya.
+async function writeStatus(userId: string, s: { connection: WAStatus; qr: string | null; code?: number }) {
   try {
-    mkdirSync(userDir(userId), { recursive: true });
-    writeFileSync(statusFile(userId), JSON.stringify({ ...s, updatedAt: new Date().toISOString() }, null, 2));
+    await prisma.whatsAppSession.upsert({
+      where: { userId },
+      create: { userId, status: s.connection, qr: s.qr, code: s.code ?? null },
+      update: { status: s.connection, qr: s.qr, code: s.code ?? null },
+    });
   } catch (e) {
-    console.error(`[${userId}] gagal tulis status:`, e);
+    console.error(`[${userId}] gagal tulis status DB:`, e);
   }
 }
 
@@ -210,7 +204,7 @@ async function startSession(userId: string) {
   if (sessions.has(userId) || starting.has(userId)) return;
   starting.add(userId);
   try {
-    writeStatus(userId, { connection: "starting", qr: null });
+    await writeStatus(userId, { connection: "starting", qr: null });
     const { state, saveCreds } = await useMultiFileAuthState(authDir(userId));
     const { version } = await fetchLatestBaileysVersion();
     const sock = makeWASocket({ version, auth: state, logger, browser: Browsers.macOS("Desktop") });
@@ -224,7 +218,7 @@ async function startSession(userId: string) {
       if (qr) {
         try {
           const dataUrl = await QRCode.toDataURL(qr, { width: 320, margin: 2 });
-          writeStatus(userId, { connection: "qr", qr: dataUrl });
+          await writeStatus(userId, { connection: "qr", qr: dataUrl });
         } catch (e) {
           console.error(`[${userId}] gagal buat QR:`, e);
         }
@@ -232,7 +226,7 @@ async function startSession(userId: string) {
       if (connection === "open") {
         pendingConnect.delete(userId);
         console.log(`[${userId}] ✅ tersambung sebagai ${sock.user?.id}`);
-        writeStatus(userId, { connection: "open", qr: null });
+        await writeStatus(userId, { connection: "open", qr: null });
       }
       if (connection === "close") {
         const code = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output?.statusCode;
@@ -243,10 +237,10 @@ async function startSession(userId: string) {
           try {
             rmSync(authDir(userId), { recursive: true, force: true });
           } catch {}
-          writeStatus(userId, { connection: "offline", qr: null });
+          await writeStatus(userId, { connection: "offline", qr: null });
         } else {
           // Reconnect ditangani controlTick (selama registered atau masih dalam jendela connect).
-          writeStatus(userId, { connection: "close", qr: null, code });
+          await writeStatus(userId, { connection: "close", qr: null, code });
         }
       }
     });
@@ -266,7 +260,7 @@ async function startSession(userId: string) {
   } catch (e) {
     console.error(`[${userId}] gagal start sesi:`, e);
     sessions.delete(userId);
-    writeStatus(userId, { connection: "offline", qr: null });
+    await writeStatus(userId, { connection: "offline", qr: null });
   } finally {
     starting.delete(userId);
   }
@@ -282,12 +276,30 @@ async function logoutSession(userId: string) {
   try {
     rmSync(authDir(userId), { recursive: true, force: true });
   } catch {}
-  writeStatus(userId, { connection: "offline", qr: null });
+  await writeStatus(userId, { connection: "offline", qr: null });
   console.log(`[${userId}] diputuskan`);
 }
 
-// ── Loop kontrol: pantau permintaan connect/logout & reconnect otomatis ──────
+// ── Loop kontrol: pantau perintah dari web (via DB) & reconnect otomatis ─────
 async function controlTick() {
+  // 1) Perintah connect/logout dari web (DB → berfungsi walau web di Vercel).
+  try {
+    const pending = await prisma.whatsAppSession.findMany({ where: { command: { not: null } } });
+    for (const row of pending) {
+      const userId = row.userId;
+      await prisma.whatsAppSession.update({ where: { userId }, data: { command: null } }).catch(() => {});
+      if (row.command === "logout") {
+        await logoutSession(userId);
+      } else if (row.command === "connect") {
+        pendingConnect.set(userId, Date.now() + CONNECT_WINDOW_MS);
+        await startSession(userId);
+      }
+    }
+  } catch (e) {
+    console.error("controlTick (DB) error:", e);
+  }
+
+  // 2) Sambungkan ulang sesi tertaut yang kredensialnya tersimpan di disk worker.
   if (!existsSync(ROOT)) return;
   let userIds: string[] = [];
   try {
@@ -299,24 +311,8 @@ async function controlTick() {
   }
 
   for (const userId of userIds) {
-    const dir = userDir(userId);
-    const connectReq = path.join(dir, "connect.req");
-    const logoutReq = path.join(dir, "logout.req");
+    if (sessions.has(userId) || starting.has(userId)) continue;
     try {
-      if (existsSync(logoutReq)) {
-        unlinkSync(logoutReq);
-        if (existsSync(connectReq)) unlinkSync(connectReq);
-        await logoutSession(userId);
-        continue;
-      }
-      if (existsSync(connectReq)) {
-        unlinkSync(connectReq);
-        pendingConnect.set(userId, Date.now() + CONNECT_WINDOW_MS);
-        await startSession(userId);
-        continue;
-      }
-      if (sessions.has(userId) || starting.has(userId)) continue;
-
       if (isRegistered(userId)) {
         // Sesi tertaut sungguhan → sambungkan ulang.
         await startSession(userId);
@@ -329,10 +325,10 @@ async function controlTick() {
         try {
           rmSync(authDir(userId), { recursive: true, force: true });
         } catch {}
-        writeStatus(userId, { connection: "offline", qr: null });
+        await writeStatus(userId, { connection: "offline", qr: null });
       }
     } catch (e) {
-      console.error(`[${userId}] controlTick error:`, e);
+      console.error(`[${userId}] reconnect error:`, e);
     }
   }
 }

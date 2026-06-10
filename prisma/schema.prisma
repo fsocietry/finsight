@@ -17,6 +17,7 @@ model User {
   sessions      Session[]
   transactions  Transaction[]
   chatMessages  ChatMessage[]
+  whatsapp      WhatsAppSession?
 }
 
 model Account {
@@ -70,5 +71,17 @@ model ChatMessage {
   content   String
   userId    String
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Koordinasi & status koneksi WhatsApp per user (pengganti file status/req,
+// agar web di serverless/Vercel bisa berkomunikasi dengan worker via DB).
+model WhatsAppSession {
+  userId    String   @id
+  status    String   @default("offline") // offline|starting|qr|open|close
+  qr        String? // data URL PNG QR saat status=qr
+  code      Int? // kode disconnect terakhir
+  command   String? // perintah dari web ke worker: "connect" | "logout" | null
+  updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

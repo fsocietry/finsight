@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { readFile } from "fs/promises";
-import path from "path";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-const ROOT = process.env.WA_USERS_DIR || "whatsapp/users";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -14,12 +11,11 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Status WhatsApp khusus untuk akun yang sedang login.
-  const file = path.resolve(ROOT, session.user.id, "status.json");
-  try {
-    const raw = await readFile(file, "utf8");
-    return NextResponse.json(JSON.parse(raw));
-  } catch {
-    return NextResponse.json({ connection: "offline", qr: null });
-  }
+  // Status WhatsApp akun login dibaca dari DB (ditulis oleh worker).
+  const row = await prisma.whatsAppSession.findUnique({ where: { userId: session.user.id } });
+  return NextResponse.json({
+    connection: row?.status ?? "offline",
+    qr: row?.qr ?? null,
+    code: row?.code ?? undefined,
+  });
 }
