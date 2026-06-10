@@ -9,6 +9,7 @@
 - 📷 **Scan Struk (AI)** — foto struk belanja, AI otomatis membaca merchant, total, dan tanggal lalu mengisi form transaksi untuk kamu periksa & simpan.
 - 📈 **Analitik** — rincian pengeluaran, tingkat tabungan, dan distribusi pengeluaran.
 - 🤖 **AI Chat** — asisten keuangan yang menjawab pertanyaan berdasarkan data transaksimu (khusus topik keuangan).
+- 💬 **Integrasi WhatsApp** — kirim foto struk ke WhatsApp dan otomatis tercatat sebagai transaksi; kirim teks untuk ngobrol dengan AI keuangan. Lihat [bagian WhatsApp](#-integrasi-whatsapp).
 - 🌗 **Tema terang & gelap** dengan toggle, tersimpan otomatis.
 - 📱 **Responsif** — sidebar menjadi menu burger di layar HP/tablet.
 
@@ -58,6 +59,27 @@ Buat file `.env` di root proyek:
 | `GROQ_API_KEY` | API key Groq untuk fitur AI |
 
 > **Google OAuth:** tambahkan `http://localhost:3000/api/auth/callback/google` ke *Authorized redirect URIs* di Google Cloud Console.
+
+## 💬 Integrasi WhatsApp (multi-akun)
+
+Bot WhatsApp berbasis [Baileys](https://github.com/WhiskeySockets/Baileys) — gratis, tanpa akun bisnis, login lewat scan QR seperti WhatsApp Web. **Setiap user FinSight menghubungkan WhatsApp-nya sendiri** dari halaman **WhatsApp** di web. Foto struk yang dikirim otomatis jadi transaksi; teks dicatat sebagai pemasukan/pengeluaran (bahasa natural) atau dijawab AI keuangan.
+
+**Cara pakai:**
+
+1. Jalankan worker (mengelola semua sesi sekaligus):
+   ```bash
+   npm run wa
+   ```
+2. Login web, buka menu **WhatsApp** → klik **Hubungkan WhatsApp** → QR muncul di halaman.
+3. Di HP: **WhatsApp → Setelan → Perangkat Tertaut → Tautkan perangkat**, scan QR. Sesi per-user tersimpan di `whatsapp/users/<userId>/` (tidak di-commit), jadi scan cukup sekali — worker menyambung ulang otomatis saat dijalankan.
+4. Dari chat **Pesan ke Diri Sendiri** di HP yang men-scan:
+   - Kirim **foto struk** → tercatat sebagai pengeluaran.
+   - Ketik transaksi (mis. `beli kopi 25rb`, `gaji masuk 5jt`, `bayar listrik 200k kemarin`) → otomatis dicatat; balas `batal` untuk membatalkan yang terakhir.
+   - Ketik pertanyaan (mis. `pengeluaran bulan ini berapa?`) → dijawab AI.
+
+Putuskan kapan saja lewat tombol **Putuskan** di halaman WhatsApp.
+
+> ⚠️ HP yang men-scan QR menjadi "akun bot" untuk user tersebut. Baileys memakai protokol WhatsApp Web tidak resmi — ada risiko kecil nomor diblokir; sebaiknya pakai nomor cadangan.
 
 ## ☁️ Deploy ke Vercel
 

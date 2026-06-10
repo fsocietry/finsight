@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ArrowLeftRight, BarChart3, MessageSquareText, LogOut, X } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, BarChart3, MessageSquareText, Smartphone, LogOut, X } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/ui/Logo";
@@ -13,6 +13,7 @@ const navItems = [
   { href: "/transactions", label: "Transaksi", icon: ArrowLeftRight },
   { href: "/analytics", label: "Analitik", icon: BarChart3 },
   { href: "/chat", label: "AI Chat", icon: MessageSquareText },
+  { href: "/whatsapp", label: "WhatsApp", icon: Smartphone },
 ];
 
 export default function Sidebar({
