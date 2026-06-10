@@ -1,0 +1,21 @@
+[Unit]
+Description=FinSight WhatsApp worker (Baileys)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Sesuaikan user & path repo di VPS:
+#   Ubuntu  -> User=ubuntu, /home/ubuntu/finsight
+#   Oracle Linux -> User=opc, /home/opc/finsight
+User=ubuntu
+WorkingDirectory=/home/ubuntu/finsight
+# Login shell agar PATH node (NodeSource/nvm) ditemukan.
+# Worker memuat .env sendiri (import "dotenv/config").
+ExecStart=/bin/bash -lc 'npm run wa'
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

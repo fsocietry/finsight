@@ -81,6 +81,8 @@ Putuskan kapan saja lewat tombol **Putuskan** di halaman WhatsApp.
 
 > ⚠️ HP yang men-scan QR menjadi "akun bot" untuk user tersebut. Baileys memakai protokol WhatsApp Web tidak resmi — ada risiko kecil nomor diblokir; sebaiknya pakai nomor cadangan.
 
+**Produksi:** web boleh di Vercel, tetapi worker WhatsApp **wajib di mesin yang selalu nyala** (Baileys butuh proses persisten — tidak bisa di serverless). Web & worker berkomunikasi lewat DB (Supabase) yang sama. Panduan VPS gratis: [`deploy/oracle-vps.md`](deploy/oracle-vps.md). Jalankan worker **hanya di satu tempat**.
+
 ## ☁️ Deploy ke Vercel
 
 1. Push repo ini ke GitHub, lalu import ke [Vercel](https://vercel.com/).
