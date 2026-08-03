@@ -75,6 +75,7 @@ type Session = {
 const sessions = new Map<string, Session>();
 const starting = new Set<string>();
 const pendingConnect = new Map<string, number>(); // userId → expiresAt (ms)
+const allowedNumbers = new Map<string, Set<string>>(); // userId → nomor lain yang boleh chat ke bot
 
 // ── Penanganan pesan masuk ──────────────────────────────────────────────────
 function ownIdsOf(userId: string, sock: WASocket): Set<string> {
@@ -93,12 +94,16 @@ function ownIdsOf(userId: string, sock: WASocket): Set<string> {
   return ids;
 }
 
-/** Hanya proses chat "Pesan ke Diri Sendiri" milik nomor yang men-scan. */
-function isSelfChat(msg: WAMessage, ownIds: Set<string>): boolean {
+/** Hanya proses chat "Pesan ke Diri Sendiri" atau dari nomor yang di-whitelist user.
+ *  Catatan: chat pribadi kini sering datang via JID `@lid` (identitas tersamar), bukan
+ *  nomor telepon — nomor asli pengirim harus diambil dari `key.senderPn`. */
+function isAllowedChat(msg: WAMessage, ownIds: Set<string>, allowed: Set<string>): boolean {
   const jid = msg.key.remoteJid || "";
   if (jid.endsWith("@g.us") || jid.endsWith("@broadcast")) return false;
-  const sender = jidDigits(jid);
-  return Boolean(sender) && ownIds.has(sender);
+  const senderPn = (msg.key as { senderPn?: string }).senderPn;
+  const sender = jidDigits(senderPn || jid);
+  if (!sender) return false;
+  return ownIds.has(sender) || allowed.has(sender);
 }
 
 async function handleMessage(userId: string, session: Session, msg: WAMessage) {
@@ -107,7 +112,7 @@ async function handleMessage(userId: string, session: Session, msg: WAMessage) {
   const id = msg.key.id || "";
   if (id && botSentIds.has(id)) return; // anti-loop balasan sendiri
 
-  if (!isSelfChat(msg, ownIdsOf(userId, sock))) return;
+  if (!isAllowedChat(msg, ownIdsOf(userId, sock), allowedNumbers.get(userId) || new Set())) return;
 
   const jid = msg.key.remoteJid!;
   const m = msg.message;
@@ -289,11 +294,24 @@ async function logoutSession(userId: string) {
 
 // ── Loop kontrol: pantau perintah dari web (via DB) & reconnect otomatis ─────
 async function controlTick() {
-  // 1) Perintah connect/logout dari web (DB → berfungsi walau web di Vercel).
+  // 1) Perintah connect/logout dari web (DB → berfungsi walau web di Vercel),
+  //    sekalian sinkronkan whitelist nomor yang boleh chat ke bot.
   try {
-    const pending = await prisma.whatsAppSession.findMany({ where: { command: { not: null } } });
-    for (const row of pending) {
+    const rows = await prisma.whatsAppSession.findMany({
+      select: { userId: true, command: true, allowedNumbers: true },
+    });
+    for (const row of rows) {
       const userId = row.userId;
+      allowedNumbers.set(
+        userId,
+        new Set(
+          (row.allowedNumbers || "")
+            .split(",")
+            .map((n) => n.replace(/\D/g, ""))
+            .filter(Boolean)
+        )
+      );
+      if (!row.command) continue;
       await prisma.whatsAppSession.update({ where: { userId }, data: { command: null } }).catch(() => {});
       if (row.command === "logout") {
         await logoutSession(userId);

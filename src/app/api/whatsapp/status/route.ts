@@ -17,5 +17,8 @@ export async function GET() {
     connection: row?.status ?? "offline",
     qr: row?.qr ?? null,
     code: row?.code ?? undefined,
+    allowedNumbers: row?.allowedNumbers
+      ? row.allowedNumbers.split(",").filter(Boolean)
+      : [],
   });
 }

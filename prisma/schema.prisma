@@ -77,11 +77,12 @@ model ChatMessage {
 // Koordinasi & status koneksi WhatsApp per user (pengganti file status/req,
 // agar web di serverless/Vercel bisa berkomunikasi dengan worker via DB).
 model WhatsAppSession {
-  userId    String   @id
-  status    String   @default("offline") // offline|starting|qr|open|close
-  qr        String? // data URL PNG QR saat status=qr
-  code      Int? // kode disconnect terakhir
-  command   String? // perintah dari web ke worker: "connect" | "logout" | null
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String   @id
+  status         String   @default("offline") // offline|starting|qr|open|close
+  qr             String? // data URL PNG QR saat status=qr
+  code           Int? // kode disconnect terakhir
+  command        String? // perintah dari web ke worker: "connect" | "logout" | null
+  allowedNumbers String? // nomor WA lain yang boleh chat ke bot ini, dipisah koma (digit saja, mis. "6281234567890,6289876543210")
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -11,6 +11,8 @@ import {
   MessageCircle,
   Plug,
   Unplug,
+  Users,
+  Save,
 } from "lucide-react";
 
 type Status = {
@@ -18,11 +20,15 @@ type Status = {
   qr: string | null;
   code?: number;
   updatedAt?: string;
+  allowedNumbers?: string[];
 };
 
 export default function WhatsAppPage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
+  const [numbersInput, setNumbersInput] = useState("");
+  const [numbersDirty, setNumbersDirty] = useState(false);
+  const [savingNumbers, setSavingNumbers] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -30,7 +36,10 @@ export default function WhatsAppPage() {
       try {
         const res = await fetch("/api/whatsapp/status", { cache: "no-store" });
         const data = await res.json();
-        if (active) setStatus(data);
+        if (active) {
+          setStatus(data);
+          if (!numbersDirty) setNumbersInput((data.allowedNumbers || []).join(", "));
+        }
       } catch {
         /* abaikan; coba lagi tick berikutnya */
       }
@@ -41,7 +50,24 @@ export default function WhatsAppPage() {
       active = false;
       clearInterval(id);
     };
-  }, []);
+  }, [numbersDirty]);
+
+  const saveAllowedNumbers = async () => {
+    setSavingNumbers(true);
+    try {
+      const numbers = numbersInput.split(",").map((n) => n.trim()).filter(Boolean);
+      const res = await fetch("/api/whatsapp/allowed-numbers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numbers }),
+      });
+      const data = await res.json();
+      setNumbersInput((data.numbers || []).join(", "));
+      setNumbersDirty(false);
+    } finally {
+      setSavingNumbers(false);
+    }
+  };
 
   const connect = async () => {
     setBusy(true);
@@ -169,8 +195,41 @@ export default function WhatsAppPage() {
               </div>
             </div>
             <p className="text-xs text-ink/40">
-              Gunakan chat <b>&ldquo;Pesan ke Diri Sendiri&rdquo;</b> di HP yang men-scan QR.
+              Gunakan chat <b>&ldquo;Pesan ke Diri Sendiri&rdquo;</b> di HP yang men-scan QR, atau nomor lain
+              yang kamu izinkan di bawah.
             </p>
+
+            <div className="w-full space-y-2 rounded-2xl bg-ink/5 px-4 py-3 text-left">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Users size={16} className="text-ink/45" />
+                Nomor lain yang boleh chat ke bot ini
+              </label>
+              <p className="text-xs text-ink/45">
+                Pisahkan dengan koma, mis. 6281234567890, 6289876543210. Kosongkan untuk hanya
+                izinkan chat ke diri sendiri.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={numbersInput}
+                  onChange={(e) => {
+                    setNumbersInput(e.target.value);
+                    setNumbersDirty(true);
+                  }}
+                  placeholder="6281234567890, 6289876543210"
+                  className="flex-1 rounded-xl border border-ink/15 bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+                <button
+                  onClick={saveAllowedNumbers}
+                  disabled={savingNumbers}
+                  className="flex items-center gap-1.5 rounded-xl bg-ink/10 px-3 py-2 text-sm font-medium hover:bg-ink/15 disabled:opacity-50"
+                >
+                  {savingNumbers ? <Loader2 className="animate-spin" size={15} /> : <Save size={15} />}
+                  Simpan
+                </button>
+              </div>
+            </div>
+
             <button
               onClick={disconnect}
               disabled={busy}
