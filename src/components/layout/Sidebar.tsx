@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, ArrowLeftRight, BarChart3, MessageSquareText, Smartphone, LogOut, X } from "lucide-react";
@@ -25,6 +26,7 @@ export default function Sidebar({
 }) {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const [imgError, setImgError] = useState(false);
 
   return (
     <aside
@@ -75,8 +77,14 @@ export default function Sidebar({
       <div className="border-t border-ink/10 p-4">
         {session?.user && (
           <div className="mb-3 flex items-center gap-3">
-            {session.user.image ? (
-              <img src={session.user.image} alt="" className="h-9 w-9 rounded-full" />
+            {session.user.image && !imgError ? (
+              <img
+                src={session.user.image}
+                alt=""
+                referrerPolicy="no-referrer"
+                onError={() => setImgError(true)}
+                className="h-9 w-9 rounded-full object-cover"
+              />
             ) : (
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-ink/10 text-sm font-medium">
                 {session.user.name?.[0] || "U"}

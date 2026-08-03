@@ -15,15 +15,22 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }: { token: any; user: any }) {
+    jwt({ token, user, profile }: { token: any; user: any; profile?: any }) {
       if (user) {
         token.id = user.id;
+      }
+      // Ambil foto profil terbaru dari Google saat login.
+      if (profile?.picture) {
+        token.picture = profile.picture;
+      } else if (user?.image) {
+        token.picture = user.image;
       }
       return token;
     },
     session({ session, token }: { session: any; token: any }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.image = (token.picture as string) ?? session.user.image;
       }
       return session;
     },
