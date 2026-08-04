@@ -29,10 +29,22 @@ jobs:
       - name: Check if instance already exists
         id: check
         run: |
-          COUNT=$(oci compute instance list \
+          set +e
+          RAW=$(oci compute instance list \
             --compartment-id "${{ secrets.OCI_TENANCY_OCID }}" \
-            --output json 2>/dev/null | \
-            jq '[.data[] | select(."display-name"=="finsight-wa" and ."lifecycle-state"!="TERMINATED")] | length')
+            --output json 2>&1)
+          CODE=$?
+          if [ $CODE -ne 0 ]; then
+            echo "::warning::Gagal cek instance list (exit $CODE), anggap belum ada dan tetap coba launch:"
+            echo "$RAW"
+            COUNT=0
+          else
+            COUNT=$(echo "$RAW" | jq '[.data[] | select(."display-name"=="finsight-wa" and ."lifecycle-state"!="TERMINATED")] | length')
+            if ! [[ "$COUNT" =~ ^[0-9]+$ ]]; then
+              echo "::warning::Output jq tidak valid ('$COUNT'), fallback ke 0"
+              COUNT=0
+            fi
+          fi
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           echo "Instance finsight-wa existing count: $COUNT"
 
