@@ -1,0 +1,65 @@
+name: Retry Oracle Cloud instance launch
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  retry-launch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install OCI CLI
+        run: pip install --quiet oci-cli
+
+      - name: Configure OCI CLI
+        run: |
+          mkdir -p ~/.oci
+          cat > ~/.oci/config << EOF
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_OCID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=/home/runner/.oci/oci_api_key.pem
+          EOF
+          printf '%s\n' "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/config ~/.oci/oci_api_key.pem
+
+      - name: Check if instance already exists
+        id: check
+        run: |
+          COUNT=$(oci compute instance list \
+            --compartment-id "${{ secrets.OCI_TENANCY_OCID }}" \
+            --output json 2>/dev/null | \
+            jq '[.data[] | select(."display-name"=="finsight-wa" and ."lifecycle-state"!="TERMINATED")] | length')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Instance finsight-wa existing count: $COUNT"
+
+      - name: Try launch instance
+        if: steps.check.outputs.count == '0'
+        run: |
+          set +e
+          OUT=$(oci compute instance launch \
+            --availability-domain "Wysd:AP-BATAM-1-AD-1" \
+            --compartment-id "${{ secrets.OCI_TENANCY_OCID }}" \
+            --shape "VM.Standard.A1.Flex" \
+            --shape-config '{"ocpus":1,"memoryInGBs":6}' \
+            --subnet-id "ocid1.subnet.oc1.ap-batam-1.aaaaaaaa3hsrgmik64evjbmdpmvpaze77rykc32e2oj3iipt6nxgknjkyuma" \
+            --image-id "ocid1.image.oc1.ap-batam-1.aaaaaaaak4v2zhtob4zctnbgdpc3h32iie4iemtgyywvhm3itgfovddi435q" \
+            --display-name "finsight-wa" \
+            --assign-public-ip true \
+            --metadata '{"ssh_authorized_keys":"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIABBQBcApKsq6aQ1PvLBzVyk5jhZxyUI4tKzU2LiDYZb finsight-oracle"}' \
+            2>&1)
+          CODE=$?
+          echo "$OUT"
+          if [ $CODE -eq 0 ]; then
+            echo "::notice::Instance finsight-wa berhasil dibuat!"
+          else
+            echo "::warning::Percobaan gagal (kapasitas/jaringan) - akan dicoba lagi di run berikutnya"
+          fi
+          exit 0
+
+      - name: Skip (instance already running)
+        if: steps.check.outputs.count != '0'
+        run: echo "Instance finsight-wa sudah ada, tidak perlu launch lagi."
