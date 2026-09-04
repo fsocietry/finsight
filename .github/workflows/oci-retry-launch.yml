@@ -1,8 +1,10 @@
 name: Retry Oracle Cloud instance launch
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"
+  # Cron dimatikan karena instance finsight-wa sudah berhasil dibuat.
+  # Aktifkan lagi kalau instance perlu di-provision ulang.
+  # schedule:
+  #   - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 jobs:
