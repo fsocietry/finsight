@@ -4,10 +4,10 @@ export const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY!,
 });
 
-export const GROQ_MODEL = "llama-3.3-70b-versatile";
+export const GROQ_MODEL = "openai/gpt-oss-120b";
 
 // Multimodal model used to read receipt photos.
-export const GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+export const GROQ_VISION_MODEL = "qwen/qwen3.8-27b";
 
 export const OFF_TOPIC_REFUSAL =
   "Maaf, saya hanya bisa membantu seputar keuangan pribadi Anda di FinSight, seperti transaksi, pengeluaran, pemasukan, anggaran, tabungan, dan saran finansial. Saya tidak bisa menjawab pertanyaan di luar topik tersebut.";
